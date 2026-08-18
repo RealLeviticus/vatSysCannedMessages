@@ -178,6 +178,33 @@ Framework 4.7.2 targeting pack, and vatSys installed.
 `C:\Program Files (x86)\vatSys\bin`, and `install.ps1` takes `-Profile All`.
 Close vatSys before installing — it holds the DLL open.
 
+## Matching the vatSys look
+
+The window is a `BaseForm` and takes its palette from `Colours.GetColour`, so it
+follows whatever the profile defines:
+
+| Element | Identity |
+| --- | --- |
+| Window and input backgrounds | `WindowBackground` |
+| Labels | `GenericText` |
+| Text boxes, combos, tree | `InteractiveText` (matches `vatsys.TextField`) |
+| Buttons | left to `GenericButton`'s own defaults |
+
+Two things worth knowing if you touch the styling:
+
+- **Never set `BackColor` on a `GenericButton`.** It paints itself in `OnPaint`,
+  filling with `BackColor` and drawing text in `ForeColor`, and its constructor
+  already applies the right defaults. In the Australia profile
+  `WindowButtonSelected` and `InteractiveText` are both `rgb(0,0,96)`, so
+  assigning the former turns the button into a solid blue block with invisible
+  text. `WindowButtonSelected` and `WindowButtonDepressed` are hover and press
+  states that `GenericButton` applies itself.
+- **Show the window with `ShowWithPlacement(owner)`.** vatSys never calls
+  `Show()` without an owner. An unowned window is not kept above the maximised
+  main form and drops behind it the moment focus returns. `ShowWithPlacement`
+  also restores the saved position, keyed on `Control.Name` — so the form needs
+  a unique `Name` or it shares its position with every other unnamed window.
+
 ## Two vatSys quirks worked around
 
 **The Messages menu category is broken.** `MainForm.LoadPluginMenuItem` handles

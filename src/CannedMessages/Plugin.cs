@@ -77,9 +77,7 @@ namespace vatSysCannedMessages
             {
                 if (window == null || window.IsDisposed) window = new CannedMessagesWindow();
 
-                window.Show();
-                window.BringToFront();
-                window.Activate();
+                Host.Show(window);
             }
             catch (Exception ex)
             {

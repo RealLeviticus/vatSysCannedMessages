@@ -45,11 +45,8 @@ namespace vatSysCannedMessages
                 // Plugins.Load() runs from MainForm's constructor well after
                 // MMI.MainForm is assigned and InitializeComponent has built the
                 // menu, so this is on the GUI thread with the menu already there.
-                var mainFormField = typeof(MMI).GetField("MainForm",
-                    BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
-
-                var mainForm = mainFormField == null ? null : mainFormField.GetValue(null) as Form;
-                if (mainForm == null || mainForm.IsDisposed) return false;
+                var mainForm = Host.MainForm;
+                if (mainForm == null) return false;
 
                 var menuField = mainForm.GetType().GetField("messagesToolStripMenuItem",
                     BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);

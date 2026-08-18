@@ -44,9 +44,18 @@ namespace vatSysCannedMessages
         public CannedMessagesWindow()
         {
             Text = "Canned Messages";
+
+            // BaseForm keys saved window placement on Control.Name, so this has
+            // to be set and unique or the position is shared with every other
+            // unnamed vatSys window.
+            Name = "CannedMessagesWindow";
+
             ClientSize = new Size(760, 560);
             MinimumSize = new Size(620, 420);
             Resizeable = true;
+            HasCloseButton = true;
+            HasMinimizeButton = true;
+            HasMaximizeButton = false;
 
             BuildLayout();
             ApplyTheme();
@@ -191,8 +200,12 @@ namespace vatSysCannedMessages
             button.Text = text;
             button.Location = location;
             button.Size = new Size(width, 26);
-            button.FlatStyle = FlatStyle.Flat;
-            button.FlatAppearance.BorderSize = 1;
+
+            // No FlatStyle or FlatAppearance here. GenericButton paints itself
+            // in OnPaint - filling with BackColor, drawing the text in
+            // ForeColor, and using WindowButtonSelected/Depressed for the hover
+            // and pressed states. Letting Button draw a flat border on top of
+            // that fights the custom paint.
         }
 
         private void ApplyTheme()
@@ -200,26 +213,24 @@ namespace vatSysCannedMessages
             var background = Colours.GetColour(Colours.Identities.WindowBackground);
             var text = Colours.GetColour(Colours.Identities.GenericText);
             var interactive = Colours.GetColour(Colours.Identities.InteractiveText);
-            var button = Colours.GetColour(Colours.Identities.WindowButtonSelected);
-            var border = Colours.GetColour(Colours.Identities.WindowBorder);
 
             BackColor = background;
             ForeColor = text;
+            Font = MMI.eurofont_winsml;
 
             foreach (var control in AllControls(this))
             {
+                // GenericButton's constructor already applies the vatSys
+                // defaults - WindowBackground, InteractiveText, and
+                // NonInteractiveText when disabled - and sets its own font.
+                // Overriding BackColor with WindowButtonSelected is what makes
+                // a button render as a solid blue block with unreadable text.
+                if (control is GenericButton) continue;
+
                 control.Font = MMI.eurofont_winsml;
 
-                var genericButton = control as GenericButton;
-                if (genericButton != null)
-                {
-                    genericButton.BackColor = button;
-                    genericButton.ForeColor = interactive;
-                    genericButton.FlatAppearance.BorderColor = border;
-                    continue;
-                }
-
-                if (control is TextBox || control is ComboBox || control is TreeView)
+                // Inputs match vatsys.TextField: window background, interactive text.
+                if (control is TextBoxBase || control is ComboBox || control is TreeView || control is ListBox)
                 {
                     control.BackColor = background;
                     control.ForeColor = interactive;

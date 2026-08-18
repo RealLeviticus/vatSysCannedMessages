@@ -76,6 +76,7 @@
 
   <ItemGroup>
     <Compile Include="CannedMessagesWindow.cs" />
+    <Compile Include="Host.cs" />
     <Compile Include="Json.cs" />
     <Compile Include="MenuPlacement.cs" />
     <Compile Include="Models.cs" />
