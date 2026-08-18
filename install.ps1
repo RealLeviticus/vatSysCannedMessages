@@ -64,4 +64,4 @@ foreach ($name in $targets) {
 }
 
 Write-Host ''
-Write-Host 'Restart vatSys, then open Windows > Canned Messages.'
+Write-Host 'Restart vatSys, then open Messages > Canned Messages.'

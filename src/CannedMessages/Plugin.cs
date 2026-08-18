@@ -7,7 +7,7 @@ using vatsys.Plugin;
 namespace vatSysCannedMessages
 {
     /// <summary>
-    /// vatSys entry point. Adds a "Canned Messages" item to the Windows menu of
+    /// vatSys entry point. Adds a "Canned Messages" item to the Messages menu of
     /// the main window and keeps the shared template list up to date.
     /// </summary>
     public class Plugin : IPlugin
@@ -40,7 +40,7 @@ namespace vatSysCannedMessages
 
             MMI.AddCustomMenuItem(new CustomToolStripMenuItem(
                 CustomToolStripMenuItemWindowType.Main,
-                CustomToolStripMenuItemCategory.Windows,
+                CustomToolStripMenuItemCategory.Messages,
                 menuItem));
 
             if (TemplateStore.Config == null || !TemplateStore.Config.RefreshOnStartup.HasValue ||

@@ -12,7 +12,7 @@ minutes — becomes a dropdown or a text box in the window.
 1. Download the latest build (or build it yourself, see below).
 2. Copy the `CannedMessages` folder into
    `Documents\vatSys Files\Profiles\<your profile>\Plugins\`.
-3. Restart vatSys and open **Windows → Canned Messages**.
+3. Restart vatSys and open **Messages → Canned Messages**.
 
 vatSys also loads plugins from `<install dir>\bin\Plugins`, which applies to
 every profile but needs administrator rights to write to.
