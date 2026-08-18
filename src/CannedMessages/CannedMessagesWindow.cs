@@ -20,6 +20,7 @@ namespace vatSysCannedMessages
         private readonly TableLayoutPanel fieldsTable = new TableLayoutPanel();
         private readonly Panel fieldsHost = new Panel();
         private readonly TextBox txtPreview = new TextBox();
+        private readonly SplitContainer split = new SplitContainer();
 
         private readonly GenericButton btnSend = new GenericButton();
         private readonly GenericButton btnCopy = new GenericButton();
@@ -33,6 +34,12 @@ namespace vatSysCannedMessages
         private readonly Dictionary<string, string> rememberedValues =
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
+        /// <summary>Keeps the dropdown current without touching Items needlessly.</summary>
+        private readonly System.Windows.Forms.Timer recipientPoll =
+            new System.Windows.Forms.Timer { Interval = 3000 };
+
+        private List<string> knownRecipients = new List<string>();
+
         private MessageTemplate selected;
         private bool suppressPreview;
 
@@ -45,7 +52,7 @@ namespace vatSysCannedMessages
             // unnamed vatSys window.
             Name = "CannedMessagesWindow";
 
-            ClientSize = new Size(760, 560);
+            ClientSize = new Size(860, 560);
             MinimumSize = new Size(620, 420);
             Resizeable = true;
             HasCloseButton = true;
@@ -61,12 +68,19 @@ namespace vatSysCannedMessages
             ReloadTemplates();
             ReloadRecipients();
 
+            recipientPoll.Tick += (s, e) => ReloadRecipients();
+            recipientPoll.Start();
+
             TemplateStore.Updated += OnTemplatesUpdated;
         }
 
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
             TemplateStore.Updated -= OnTemplatesUpdated;
+
+            recipientPoll.Stop();
+            recipientPoll.Dispose();
+
             base.OnFormClosed(e);
         }
 
@@ -118,8 +132,9 @@ namespace vatSysCannedMessages
             cboRecipient.AutoCompleteSource = AutoCompleteSource.ListItems;
             cboRecipient.TextChanged += (s, e) => { UpdateRecipientInfo(); UpdatePreview(); };
 
-            // Refill from the network as the list opens. DropDown fires before
-            // the list is shown, so the items are current every time.
+            // Belt and braces on top of the poll: catch anyone who connected in
+            // the last few seconds. Almost always a no-op, which is what keeps
+            // it safe to call while the list is opening.
             cboRecipient.DropDown += (s, e) => ReloadRecipients();
 
             lblRecipientInfo.Location = new Point(36, 33);
@@ -140,8 +155,16 @@ namespace vatSysCannedMessages
             treeMessages.ItemHeight = 20;
             treeMessages.AfterSelect += TreeMessages_AfterSelect;
 
-            var left = new Panel { Dock = DockStyle.Left, Width = 250, Padding = new Padding(8, 0, 4, 8) };
-            left.Controls.Add(treeMessages);
+            // A fixed-width panel clipped the longer titles, so the divider is
+            // draggable and the tree gets more room by default.
+            split.Dock = DockStyle.Fill;
+            split.Orientation = Orientation.Vertical;
+            split.SplitterWidth = 6;
+            split.Panel1MinSize = 160;
+            split.Panel2MinSize = 260;
+            split.Panel1.Padding = new Padding(8, 0, 0, 8);
+            split.Panel2.Padding = new Padding(4, 0, 8, 8);
+            split.Panel1.Controls.Add(treeMessages);
 
             // --- right hand side ---------------------------------------------------
             fieldsTable.ColumnCount = 2;
@@ -164,17 +187,28 @@ namespace vatSysCannedMessages
             txtPreview.BorderStyle = BorderStyle.FixedSingle;
             txtPreview.WordWrap = true;
 
-            var right = new Panel { Dock = DockStyle.Fill, Padding = new Padding(4, 0, 8, 8) };
-            right.Controls.Add(txtPreview);
-            right.Controls.Add(fieldsHost);
+            split.Panel2.Controls.Add(txtPreview);
+            split.Panel2.Controls.Add(fieldsHost);
 
-            // Docking is resolved highest-index-first, so add the fill panel first.
-            Controls.Add(right);
-            Controls.Add(left);
+            // Docking is resolved highest-index-first, so add the fill control first.
+            Controls.Add(split);
             Controls.Add(top);
             Controls.Add(bottom);
 
             ResumeLayout(true);
+
+            // SplitterDistance is clamped against the control's actual width, so
+            // it only sticks once the split container has been laid out.
+            try
+            {
+                split.SplitterDistance = 300;
+            }
+            catch (InvalidOperationException)
+            {
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+            }
         }
 
         private void ConfigureButton(GenericButton button, string text, Point location, int width)
@@ -430,12 +464,21 @@ namespace vatSysCannedMessages
 
         #region Recipients
 
-        /// <summary>Controllers currently online, sorted. Pilots are excluded.</summary>
+        /// <summary>
+        /// Controllers currently online, sorted. Pilots are excluded.
+        ///
+        /// Network.GetOnlineATCs returns null - not an empty list - whenever
+        /// Network.Instance is null, which is the case until vatSys has a
+        /// session. Calling LINQ straight onto it throws.
+        /// </summary>
         private static List<string> OnlineControllers()
         {
             try
             {
-                return Network.GetOnlineATCs
+                var atcs = Network.GetOnlineATCs;
+                if (atcs == null) return new List<string>();
+
+                return atcs
                     .Where(a => a != null && !string.IsNullOrEmpty(a.Callsign))
                     .Select(a => a.Callsign)
                     .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -449,22 +492,49 @@ namespace vatSysCannedMessages
             }
         }
 
+        private static NetworkATC FindController(string callsign)
+        {
+            try
+            {
+                var atcs = Network.GetOnlineATCs;
+                if (atcs == null) return null;
+
+                return atcs.FirstOrDefault(a =>
+                    a != null && string.Equals(a.Callsign, callsign, StringComparison.OrdinalIgnoreCase));
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         /// <summary>
-        /// Refills the dropdown from the network. Called as the list drops down,
-        /// so it is always current without anyone having to ask for it.
+        /// Refills the dropdown from the network, but only writes to Items when
+        /// the set has actually changed.
+        ///
+        /// That guard matters: a ComboBox with AutoCompleteSource.ListItems
+        /// rebuilds its autocomplete handle every time Items changes, and doing
+        /// that from the DropDown event leaves the list blank. The poll keeps
+        /// the items current so the DropDown call is nearly always a no-op.
         /// </summary>
         private void ReloadRecipients()
         {
-            // Only the items are touched - whatever has been typed is left
-            // alone, since this runs while the box may be mid-edit.
-            var typed = cboRecipient.Text;
+            var latest = OnlineControllers();
 
-            cboRecipient.BeginUpdate();
-            cboRecipient.Items.Clear();
-            cboRecipient.Items.AddRange(OnlineControllers().Cast<object>().ToArray());
-            cboRecipient.EndUpdate();
+            if (!latest.SequenceEqual(knownRecipients, StringComparer.OrdinalIgnoreCase))
+            {
+                knownRecipients = latest;
 
-            if (cboRecipient.Text != typed) cboRecipient.Text = typed;
+                // Whatever has been typed is preserved - this can run mid-edit.
+                var typed = cboRecipient.Text;
+
+                cboRecipient.BeginUpdate();
+                cboRecipient.Items.Clear();
+                cboRecipient.Items.AddRange(latest.Cast<object>().ToArray());
+                cboRecipient.EndUpdate();
+
+                if (cboRecipient.Text != typed) cboRecipient.Text = typed;
+            }
 
             UpdateRecipientInfo();
         }
@@ -472,31 +542,23 @@ namespace vatSysCannedMessages
         private void UpdateRecipientInfo()
         {
             var callsign = cboRecipient.Text;
+
             if (string.IsNullOrWhiteSpace(callsign))
             {
-                lblRecipientInfo.Text = "Type a controller callsign, or pick one from the list.";
+                // An empty dropdown is confusing without a reason for it.
+                if (!Sender.IsConnected) lblRecipientInfo.Text = "Not connected - no controllers to list.";
+                else if (knownRecipients.Count == 0) lblRecipientInfo.Text = "No other controllers online.";
+                else lblRecipientInfo.Text = "Type a controller callsign, or pick one from the list.";
+
                 return;
             }
 
             callsign = callsign.Trim();
 
-            try
-            {
-                var atc = Network.GetOnlineATCs
-                    .FirstOrDefault(a => a != null && string.Equals(a.Callsign, callsign, StringComparison.OrdinalIgnoreCase));
-
-                if (atc != null)
-                {
-                    lblRecipientInfo.Text = atc.Callsign + " - " + atc.RealName;
-                    return;
-                }
-            }
-            catch
-            {
-                // Not connected, or the list is not ready yet - not worth reporting.
-            }
-
-            lblRecipientInfo.Text = callsign.ToUpperInvariant() + " - not an online controller.";
+            var atc = FindController(callsign);
+            lblRecipientInfo.Text = atc != null
+                ? atc.Callsign + " - " + atc.RealName
+                : callsign.ToUpperInvariant() + " - not an online controller.";
         }
 
         #endregion
