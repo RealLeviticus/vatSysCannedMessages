@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Drawing;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Windows.Forms;
@@ -22,13 +20,10 @@ namespace vatSysCannedMessages
         private readonly TableLayoutPanel fieldsTable = new TableLayoutPanel();
         private readonly Panel fieldsHost = new Panel();
         private readonly TextBox txtPreview = new TextBox();
-        private readonly Label lblStatus = new Label();
 
         private readonly GenericButton btnSend = new GenericButton();
         private readonly GenericButton btnCopy = new GenericButton();
         private readonly GenericButton btnRefresh = new GenericButton();
-        private readonly GenericButton btnFolder = new GenericButton();
-        private readonly GenericButton btnOnline = new GenericButton();
 
         /// <summary>Placeholder key -> the control holding its value.</summary>
         private readonly Dictionary<string, Control> fieldControls =
@@ -65,7 +60,6 @@ namespace vatSysCannedMessages
 
             ReloadTemplates();
             ReloadRecipients();
-            UpdateStatus(TemplateStore.LastSyncStatus);
 
             TemplateStore.Updated += OnTemplatesUpdated;
         }
@@ -88,9 +82,6 @@ namespace vatSysCannedMessages
             ConfigureButton(btnRefresh, "Refresh", new Point(8, 8), 90);
             btnRefresh.Click += (s, e) => RefreshFromRepositoryAsync();
 
-            ConfigureButton(btnFolder, "Open folder", new Point(104, 8), 100);
-            btnFolder.Click += (s, e) => OpenDataFolder();
-
             ConfigureButton(btnCopy, "Copy", new Point(0, 8), 90);
             btnCopy.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             btnCopy.Click += (s, e) => CopyToClipboard();
@@ -100,7 +91,6 @@ namespace vatSysCannedMessages
             btnSend.Click += (s, e) => Send();
 
             bottom.Controls.Add(btnRefresh);
-            bottom.Controls.Add(btnFolder);
             bottom.Controls.Add(btnCopy);
             bottom.Controls.Add(btnSend);
             bottom.Resize += (s, e) =>
@@ -108,13 +98,6 @@ namespace vatSysCannedMessages
                 btnSend.Left = bottom.ClientSize.Width - btnSend.Width - 8;
                 btnCopy.Left = btnSend.Left - btnCopy.Width - 6;
             };
-
-            // --- status strip ------------------------------------------------------
-            lblStatus.Dock = DockStyle.Bottom;
-            lblStatus.Height = 20;
-            lblStatus.TextAlign = ContentAlignment.MiddleLeft;
-            lblStatus.Padding = new Padding(8, 0, 8, 0);
-            lblStatus.AutoEllipsis = true;
 
             // --- top recipient bar -------------------------------------------------
             var top = new Panel { Dock = DockStyle.Top, Height = 56 };
@@ -128,15 +111,16 @@ namespace vatSysCannedMessages
             };
 
             cboRecipient.Location = new Point(36, 9);
-            cboRecipient.Size = new Size(200, 22);
+            cboRecipient.Size = new Size(276, 22);
             cboRecipient.DropDownStyle = ComboBoxStyle.DropDown;
             cboRecipient.FlatStyle = FlatStyle.Flat;
             cboRecipient.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
             cboRecipient.AutoCompleteSource = AutoCompleteSource.ListItems;
             cboRecipient.TextChanged += (s, e) => { UpdateRecipientInfo(); UpdatePreview(); };
 
-            ConfigureButton(btnOnline, "Online", new Point(242, 8), 70);
-            btnOnline.Click += (s, e) => ReloadRecipients();
+            // Refill from the network as the list opens. DropDown fires before
+            // the list is shown, so the items are current every time.
+            cboRecipient.DropDown += (s, e) => ReloadRecipients();
 
             lblRecipientInfo.Location = new Point(36, 33);
             lblRecipientInfo.Size = new Size(500, 18);
@@ -144,7 +128,6 @@ namespace vatSysCannedMessages
 
             top.Controls.Add(lblTo);
             top.Controls.Add(cboRecipient);
-            top.Controls.Add(btnOnline);
             top.Controls.Add(lblRecipientInfo);
 
             // --- message tree ------------------------------------------------------
@@ -189,7 +172,6 @@ namespace vatSysCannedMessages
             Controls.Add(right);
             Controls.Add(left);
             Controls.Add(top);
-            Controls.Add(lblStatus);
             Controls.Add(bottom);
 
             ResumeLayout(true);
@@ -273,7 +255,6 @@ namespace vatSysCannedMessages
             }
 
             ReloadTemplates();
-            UpdateStatus(TemplateStore.LastSyncStatus);
         }
 
         private void ReloadTemplates()
@@ -449,56 +430,43 @@ namespace vatSysCannedMessages
 
         #region Recipients
 
-        private void ReloadRecipients()
+        /// <summary>Controllers currently online, sorted. Pilots are excluded.</summary>
+        private static List<string> OnlineControllers()
         {
-            var current = cboRecipient.Text;
-
-            var callsigns = new List<string>();
-
             try
             {
-                foreach (var atc in Network.GetOnlineATCs)
-                    if (atc != null && !string.IsNullOrEmpty(atc.Callsign)) callsigns.Add(atc.Callsign);
-
-                foreach (var pilot in Network.GetOnlinePilots)
-                    if (pilot != null && !string.IsNullOrEmpty(pilot.Callsign)) callsigns.Add(pilot.Callsign);
+                return Network.GetOnlineATCs
+                    .Where(a => a != null && !string.IsNullOrEmpty(a.Callsign))
+                    .Select(a => a.Callsign)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(c => c, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
             }
             catch (Exception ex)
             {
-                Errors.Add(new Exception("Could not read the online list: " + ex.Message, ex), Plugin.PluginName);
+                Errors.Add(new Exception("Could not read the online ATC list: " + ex.Message, ex), Plugin.PluginName);
+                return new List<string>();
             }
+        }
+
+        /// <summary>
+        /// Refills the dropdown from the network. Called as the list drops down,
+        /// so it is always current without anyone having to ask for it.
+        /// </summary>
+        private void ReloadRecipients()
+        {
+            // Only the items are touched - whatever has been typed is left
+            // alone, since this runs while the box may be mid-edit.
+            var typed = cboRecipient.Text;
 
             cboRecipient.BeginUpdate();
             cboRecipient.Items.Clear();
-            cboRecipient.Items.AddRange(callsigns
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(c => c, StringComparer.OrdinalIgnoreCase)
-                .Cast<object>()
-                .ToArray());
+            cboRecipient.Items.AddRange(OnlineControllers().Cast<object>().ToArray());
             cboRecipient.EndUpdate();
 
-            // Default to whatever track is selected on the ASD - usually the
-            // aircraft the controller is about to message.
-            if (string.IsNullOrWhiteSpace(current)) current = SelectedTrackCallsign();
+            if (cboRecipient.Text != typed) cboRecipient.Text = typed;
 
-            cboRecipient.Text = current;
             UpdateRecipientInfo();
-        }
-
-        private static string SelectedTrackCallsign()
-        {
-            try
-            {
-                var track = MMI.SelectedTrack;
-                if (track == null) return null;
-
-                var fdr = track.GetFDR();
-                return fdr != null ? fdr.Callsign : null;
-            }
-            catch
-            {
-                return null;
-            }
         }
 
         private void UpdateRecipientInfo()
@@ -506,7 +474,7 @@ namespace vatSysCannedMessages
             var callsign = cboRecipient.Text;
             if (string.IsNullOrWhiteSpace(callsign))
             {
-                lblRecipientInfo.Text = "Type a callsign, or press Online to list who is connected.";
+                lblRecipientInfo.Text = "Type a controller callsign, or pick one from the list.";
                 return;
             }
 
@@ -519,26 +487,16 @@ namespace vatSysCannedMessages
 
                 if (atc != null)
                 {
-                    lblRecipientInfo.Text = atc.Callsign + " - " + atc.RealName + " (ATC)";
-                    return;
-                }
-
-                var pilot = Network.GetOnlinePilots
-                    .FirstOrDefault(p => p != null && string.Equals(p.Callsign, callsign, StringComparison.OrdinalIgnoreCase));
-
-                if (pilot != null)
-                {
-                    lblRecipientInfo.Text = pilot.Callsign + " - " + pilot.RealName +
-                                            (string.IsNullOrEmpty(pilot.AircraftType) ? "" : " (" + pilot.AircraftType + ")");
+                    lblRecipientInfo.Text = atc.Callsign + " - " + atc.RealName;
                     return;
                 }
             }
             catch
             {
-                // Not connected, or the lists are not ready yet - not worth reporting.
+                // Not connected, or the list is not ready yet - not worth reporting.
             }
 
-            lblRecipientInfo.Text = callsign.ToUpperInvariant() + " - not in the online list.";
+            lblRecipientInfo.Text = callsign.ToUpperInvariant() + " - not an online controller.";
         }
 
         #endregion
@@ -571,25 +529,14 @@ namespace vatSysCannedMessages
             var message = BuildMessage();
             txtPreview.Text = message.Replace("\n", Environment.NewLine);
 
+            // With no status line, the disabled Send button is what says the
+            // message is not ready - so it has to account for the recipient too,
+            // not just the placeholders.
             var complete = selected != null && Placeholders.IsComplete(message);
-            btnSend.Enabled = complete;
-            btnCopy.Enabled = selected != null;
+            var hasRecipient = !string.IsNullOrWhiteSpace(cboRecipient.Text);
 
-            if (selected == null)
-            {
-                UpdateStatus(TemplateStore.LastSyncStatus);
-            }
-            else if (!complete)
-            {
-                UpdateStatus("Fill in the highlighted placeholders before sending.");
-            }
-            else
-            {
-                var parts = Sender.Split(message, MaxMessageLength);
-                UpdateStatus(parts.Count > 1
-                    ? "Will send as " + parts.Count + " private messages."
-                    : "Ready to send.");
-            }
+            btnSend.Enabled = complete && hasRecipient;
+            btnCopy.Enabled = selected != null;
         }
 
         private static int MaxMessageLength
@@ -606,30 +553,26 @@ namespace vatSysCannedMessages
             var message = BuildMessage();
             var recipient = cboRecipient.Text;
 
-            if (string.IsNullOrWhiteSpace(recipient))
-            {
-                UpdateStatus("Enter a recipient callsign first.");
-                return;
-            }
-
-            if (!Placeholders.IsComplete(message))
-            {
-                UpdateStatus("Fill in the remaining placeholders before sending.");
-                return;
-            }
+            if (string.IsNullOrWhiteSpace(recipient) || !Placeholders.IsComplete(message)) return;
 
             try
             {
                 Sender.SendPrivateMessage(recipient, message, MaxMessageLength);
                 RememberCurrentValues();
-                UpdateStatus("Sent to " + recipient.Trim().ToUpperInvariant() + " at " +
-                             DateTime.UtcNow.ToString("HH:mm:ss") + "Z.");
+
+                // The sent message lands in the vatSys PM window, which is the
+                // confirmation - no dialog needed on the happy path.
             }
             catch (Exception ex)
             {
-                UpdateStatus("Not sent - " + ex.Message + " (message copied to clipboard instead)");
                 TrySetClipboard(message);
                 Errors.Add(new Exception("Could not send canned message: " + ex.Message, ex), Plugin.PluginName);
+
+                MessageBox.Show(this,
+                    "Could not send the message." + Environment.NewLine + Environment.NewLine +
+                    ex.Message + Environment.NewLine + Environment.NewLine +
+                    "It has been copied to your clipboard instead.",
+                    Plugin.PluginName, MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
@@ -638,7 +581,7 @@ namespace vatSysCannedMessages
             var message = BuildMessage();
             if (string.IsNullOrWhiteSpace(message)) return;
 
-            UpdateStatus(TrySetClipboard(message) ? "Copied to clipboard." : "Could not access the clipboard.");
+            TrySetClipboard(message);
         }
 
         private static bool TrySetClipboard(string text)
@@ -661,7 +604,6 @@ namespace vatSysCannedMessages
         private void RefreshFromRepositoryAsync()
         {
             btnRefresh.Enabled = false;
-            UpdateStatus("Refreshing from the repository...");
 
             var worker = new Thread(() =>
             {
@@ -675,11 +617,7 @@ namespace vatSysCannedMessages
                 }
                 finally
                 {
-                    RunOnUi(() =>
-                    {
-                        btnRefresh.Enabled = true;
-                        UpdateStatus(TemplateStore.LastSyncStatus);
-                    });
+                    RunOnUi(() => { btnRefresh.Enabled = true; });
                 }
             });
 
@@ -702,24 +640,6 @@ namespace vatSysCannedMessages
             catch (InvalidOperationException)
             {
             }
-        }
-
-        private void OpenDataFolder()
-        {
-            try
-            {
-                Directory.CreateDirectory(TemplateStore.DataFolder);
-                Process.Start(new ProcessStartInfo(TemplateStore.DataFolder) { UseShellExecute = true });
-            }
-            catch (Exception ex)
-            {
-                UpdateStatus("Could not open " + TemplateStore.DataFolder + " - " + ex.Message);
-            }
-        }
-
-        private void UpdateStatus(string status)
-        {
-            lblStatus.Text = status ?? string.Empty;
         }
 
         #endregion

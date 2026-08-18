@@ -21,14 +21,13 @@ every profile but needs administrator rights to write to.
 
 | Control | What it does |
 | --- | --- |
-| **To** | Recipient callsign. Press **Online** to fill the list from who is connected; it pre-fills from the track selected on the ASD. |
+| **To** | Recipient callsign. The dropdown refills itself from the online controller list each time you open it. Controllers only — pilots are not listed. |
 | Message tree | Categories and messages from `templates/messages.json`. |
 | Field rows | One row per placeholder the message needs. `{name}` becomes a dropdown of the shared name list. |
-| Preview | Exactly what will be sent. Placeholders still shown in `{braces}` are not filled in yet, and **Send** stays disabled until they are. |
+| Preview | Exactly what will be sent. Placeholders still shown in `{braces}` are not filled in yet; **Send** stays disabled until every one is filled and a recipient is set. |
 | **Send** | Sends it as a vatSys private message. It appears in your PM window like any other. |
 | **Copy** | Puts the message on the clipboard instead — useful for the ATC chat or a coordination window. |
 | **Refresh** | Pulls the latest `templates/` from this repository. |
-| **Open folder** | Opens your local settings folder (see below). |
 
 Messages longer than 200 characters are split across several private messages on
 word boundaries. A `\n` in a template forces a new message.
@@ -125,7 +124,7 @@ the automatic value with an input box.
 ```json
 {
   "version": 1,
-  "names": ["Levi", "Alex", "Sam"]
+  "names": ["Levi", "Jamie", "Doug"]
 }
 ```
 
@@ -135,8 +134,7 @@ below.
 
 ## Local files
 
-The plugin keeps its own files in `Documents\vatSys Files\CannedMessages\`
-(the **Open folder** button goes straight there):
+The plugin keeps its own files in `Documents\vatSys Files\CannedMessages\`:
 
 | File | Purpose |
 | --- | --- |
