@@ -160,8 +160,17 @@ namespace vatSysCannedMessages
             split.Dock = DockStyle.Fill;
             split.Orientation = Orientation.Vertical;
             split.SplitterWidth = 6;
+
+            // Order matters. A new SplitContainer is 150px wide, and the
+            // Panel1MinSize/Panel2MinSize setters validate against the current
+            // width - assigning 260 to Panel2MinSize at 150px wide throws
+            // InvalidOperationException. Size it realistically first, then set
+            // the distance, then the minimums.
+            split.Size = new Size(860, 420);
+            split.SplitterDistance = PreferredTreeWidth;
             split.Panel1MinSize = 160;
             split.Panel2MinSize = 260;
+
             split.Panel1.Padding = new Padding(8, 0, 0, 8);
             split.Panel2.Padding = new Padding(4, 0, 8, 8);
             split.Panel1.Controls.Add(treeMessages);
@@ -196,20 +205,46 @@ namespace vatSysCannedMessages
             Controls.Add(bottom);
 
             ResumeLayout(true);
+        }
 
-            // SplitterDistance is clamped against the control's actual width, so
-            // it only sticks once the split container has been laid out.
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            ApplySplitterDistance();
+        }
+
+        /// <summary>
+        /// SplitterDistance is validated against the container's current width -
+        /// it throws ArgumentException if it falls outside
+        /// [Panel1MinSize, Width - Panel2MinSize]. During BuildLayout the
+        /// container has not been laid out yet and is far narrower than the
+        /// window, so the value has to be applied on load and clamped rather
+        /// than assumed to fit.
+        /// </summary>
+        private void ApplySplitterDistance()
+        {
+            if (split.IsDisposed) return;
+
+            var min = split.Panel1MinSize;
+            var max = split.Width - split.Panel2MinSize - split.SplitterWidth;
+            if (max < min) return;
+
+            var wanted = Math.Min(Math.Max(PreferredTreeWidth, min), max);
+
             try
             {
-                split.SplitterDistance = 300;
+                split.SplitterDistance = wanted;
+            }
+            catch (ArgumentException)
+            {
+                // Width changed underneath us - the default is fine.
             }
             catch (InvalidOperationException)
             {
             }
-            catch (ArgumentOutOfRangeException)
-            {
-            }
         }
+
+        private const int PreferredTreeWidth = 300;
 
         private void ConfigureButton(GenericButton button, string text, Point location, int width)
         {
