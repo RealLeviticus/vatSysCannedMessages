@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Release</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{7C1E4B2A-9D3F-4C55-B0A1-3E7F5D2A6C11}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>vatSysCannedMessages</RootNamespace>
+    <AssemblyName>vatSysCannedMessages</AssemblyName>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <PlatformTarget>x86</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <Deterministic>true</Deterministic>
+    <AutoGenerateBindingRedirects>false</AutoGenerateBindingRedirects>
+  </PropertyGroup>
+
+  <!--
+    Where vatSys is installed. Override on the command line if you installed it
+    somewhere else:  msbuild /p:VatSysPath="D:\vatSys\bin"
+  -->
+  <PropertyGroup>
+    <VatSysPath Condition=" '$(VatSysPath)' == '' ">$(ProgramFiles)\vatSys\bin</VatSysPath>
+    <VatSysPath Condition=" !Exists('$(VatSysPath)\vatSys.exe') ">C:\Program Files (x86)\vatSys\bin</VatSysPath>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+
+    <Reference Include="vatSys">
+      <HintPath>$(VatSysPath)\vatSys.exe</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="RossCarlson.Vatsim.Network">
+      <HintPath>$(VatSysPath)\RossCarlson.Vatsim.Network.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="SharpDX">
+      <HintPath>$(VatSysPath)\SharpDX.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="SharpDX.Mathematics">
+      <HintPath>$(VatSysPath)\SharpDX.Mathematics.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="PInvoke.User32">
+      <HintPath>$(VatSysPath)\PInvoke.User32.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="CannedMessagesWindow.cs" />
+    <Compile Include="Json.cs" />
+    <Compile Include="Models.cs" />
+    <Compile Include="Placeholders.cs" />
+    <Compile Include="Plugin.cs" />
+    <Compile Include="Sender.cs" />
+    <Compile Include="TemplateStore.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+
+  <!-- Ship the repository templates next to the DLL so the plugin works offline
+       on a first run, before it has ever reached GitHub. -->
+  <ItemGroup>
+    <Content Include="..\..\templates\messages.json">
+      <Link>templates\messages.json</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\..\templates\names.json">
+      <Link>templates\names.json</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

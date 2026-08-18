@@ -1,0 +1,149 @@
+{
+  "version": 1,
+  "categories": [
+    {
+      "name": "Introductions",
+      "messages": [
+        {
+          "id": "intro-basic",
+          "title": "Introduce yourself",
+          "text": "Hi, my name is {name} and I am one of the controllers here today.",
+          "fields": [
+            {
+              "key": "name",
+              "label": "Your name",
+              "source": "names",
+              "allowFreeText": true
+            }
+          ]
+        },
+        {
+          "id": "intro-mentor",
+          "title": "Introduce yourself (mentor present)",
+          "text": "Hi, my name is {name}. I am currently being mentored by {mentor} on {callsign}, so you may hear a second voice on frequency.",
+          "fields": [
+            {
+              "key": "name",
+              "label": "Your name",
+              "source": "names",
+              "allowFreeText": true
+            },
+            {
+              "key": "mentor",
+              "label": "Mentor",
+              "source": "names",
+              "allowFreeText": true
+            }
+          ]
+        },
+        {
+          "id": "intro-training",
+          "title": "Introduce yourself (under training)",
+          "text": "Hi, my name is {name} and I am a trainee controller on {callsign}. Thanks in advance for your patience."
+        }
+      ]
+    },
+    {
+      "name": "Standards",
+      "messages": [
+        {
+          "id": "std-readback",
+          "title": "Readback required",
+          "text": "{recipient}, a full readback of the clearance is required. My name is {name} if you have any questions.",
+          "fields": [
+            {
+              "key": "name",
+              "label": "Your name",
+              "source": "names",
+              "allowFreeText": true
+            }
+          ]
+        },
+        {
+          "id": "std-callsign",
+          "title": "Use your callsign",
+          "text": "{recipient}, please include your full callsign on every transmission so I can identify you on frequency."
+        },
+        {
+          "id": "std-squawk",
+          "title": "Squawk mode C",
+          "text": "{recipient}, please ensure your transponder is set to mode C so I can see your altitude."
+        },
+        {
+          "id": "std-unicom",
+          "title": "Monitor UNICOM after leaving",
+          "text": "{recipient}, when you leave my frequency please monitor UNICOM on 122.800 and broadcast your intentions."
+        }
+      ]
+    },
+    {
+      "name": "Coordination",
+      "messages": [
+        {
+          "id": "coord-hello",
+          "title": "Hello to adjacent controller",
+          "text": "Hi {recipient}, {name} here on {callsign}. Give me a shout if you need anything.",
+          "fields": [
+            {
+              "key": "name",
+              "label": "Your name",
+              "source": "names",
+              "allowFreeText": true
+            }
+          ]
+        },
+        {
+          "id": "coord-break",
+          "title": "Request a break",
+          "text": "Hi {recipient}, {name} on {callsign}. I need to step away for about {minutes} minutes at {time}Z - are you able to cover?",
+          "fields": [
+            {
+              "key": "name",
+              "label": "Your name",
+              "source": "names",
+              "allowFreeText": true
+            },
+            {
+              "key": "minutes",
+              "label": "Minutes",
+              "options": [ "5", "10", "15", "20" ],
+              "allowFreeText": true,
+              "defaultValue": "10"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Housekeeping",
+      "messages": [
+        {
+          "id": "hk-closing",
+          "title": "Closing the position",
+          "text": "{recipient}, I am closing {callsign} shortly. Please monitor UNICOM on 122.800 after leaving my frequency. Thanks for flying with us - {name}.",
+          "fields": [
+            {
+              "key": "name",
+              "label": "Your name",
+              "source": "names",
+              "allowFreeText": true
+            }
+          ]
+        },
+        {
+          "id": "hk-thanks",
+          "title": "Thanks for flying",
+          "text": "Thanks for flying with {callsign} today, have a good one. - {name}",
+          "fields": [
+            {
+              "key": "name",
+              "label": "Your name",
+              "source": "names",
+              "allowFreeText": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
