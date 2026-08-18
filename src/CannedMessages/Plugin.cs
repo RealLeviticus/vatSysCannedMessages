@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel.Composition;
 using System.Threading;
 using System.Windows.Forms;
 using vatsys;
@@ -10,6 +11,12 @@ namespace vatSysCannedMessages
     /// vatSys entry point. Adds a "Canned Messages" item to the Messages menu of
     /// the main window and keeps the shared template list up to date.
     /// </summary>
+    /// <remarks>
+    /// vatSys discovers plugins with MEF - Plugins.iplugins is an
+    /// [ImportMany] IEnumerable&lt;IPlugin&gt; - so this Export attribute is what
+    /// makes the class visible. Implementing IPlugin alone is not enough.
+    /// </remarks>
+    [Export(typeof(IPlugin))]
     public class Plugin : IPlugin
     {
         public const string PluginName = "Canned Messages";

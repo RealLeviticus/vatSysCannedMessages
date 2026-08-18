@@ -47,12 +47,12 @@ refresh.
   "version": 1,
   "categories": [
     {
-      "name": "Introductions",
+      "name": "ATS Standards",
       "messages": [
         {
-          "id": "intro-basic",
-          "title": "Introduce yourself",
-          "text": "Hi, my name is {name} and I am one of the controllers here today."
+          "id": "std-multiple-atis",
+          "title": "Multiple ATIS on DEL, GND or TWR",
+          "text": "Hi, my name is {name}, hope you are doing well. ..."
         }
       ]
     }
@@ -66,6 +66,18 @@ refresh.
 | `title` | yes | What shows in the message tree. |
 | `text` | yes | The message. `{placeholders}` in braces. |
 | `fields` | no | Extra control over the placeholder inputs. |
+
+### Two rules for message text
+
+vatSys sanitises everything before it hits the network, so write templates
+around it:
+
+- **No colons.** `Network.MakeNetworkSafe` replaces every `:` with a space,
+  because the colon is the FSD field separator. Write URLs without the scheme —
+  `vatpac.org/controllers/position`, not `https://vatpac.org/...` — or the link
+  arrives broken.
+- **ASCII only.** The text is round-tripped through the system ANSI codepage, so
+  curly quotes, en dashes and emoji get mangled. Use `'` and `-`.
 
 ### Placeholders
 
