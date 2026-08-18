@@ -178,6 +178,24 @@ Framework 4.7.2 targeting pack, and vatSys installed.
 `C:\Program Files (x86)\vatSys\bin`, and `install.ps1` takes `-Profile All`.
 Close vatSys before installing — it holds the DLL open.
 
+## Two vatSys quirks worked around
+
+**The Messages menu category is broken.** `MainForm.LoadPluginMenuItem` handles
+`CustomToolStripMenuItemCategory.Messages` by looking the anchor separator
+`toolStripSeparatorMessagesFinal` up in `setupToolStripMenuItem.DropDownItems` —
+the *Settings* menu — instead of `messagesToolStripMenuItem.DropDownItems`.
+`IndexOfKey` returns -1 and the method returns without adding anything, so the
+item silently never appears. The `Info` category has the same copy-paste bug.
+`Windows`, `Maps` and `Tools` are plain `Add`/`Insert` calls and work.
+
+So the plugin inserts into the Messages menu itself and only falls back to
+`AddCustomMenuItem` with the `Windows` category if that fails.
+
+**Plugins are discovered with MEF.** `Plugins.iplugins` is an `[ImportMany]
+IEnumerable<IPlugin>` composed via `ComposeParts`, so implementing `IPlugin` is
+not enough — the class also needs `[Export(typeof(IPlugin))]`. Without it the
+plugin loads but is never instantiated.
+
 ## How it talks to the network
 
 vatSys exposes `Network.SendRadioMessage` publicly but keeps the private-message

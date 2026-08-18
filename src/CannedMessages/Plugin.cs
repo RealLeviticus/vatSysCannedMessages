@@ -42,13 +42,10 @@ namespace vatSysCannedMessages
                 Errors.Add(new Exception("Could not load canned messages: " + ex.Message, ex), PluginName);
             }
 
-            var menuItem = new ToolStripMenuItem(PluginName);
+            var menuItem = new ToolStripMenuItem(PluginName) { Name = "cannedMessagesToolStripMenuItem" };
             menuItem.Click += (sender, e) => ShowWindow();
 
-            MMI.AddCustomMenuItem(new CustomToolStripMenuItem(
-                CustomToolStripMenuItemWindowType.Main,
-                CustomToolStripMenuItemCategory.Messages,
-                menuItem));
+            MenuPlacement.Install(menuItem);
 
             if (TemplateStore.Config == null || !TemplateStore.Config.RefreshOnStartup.HasValue ||
                 TemplateStore.Config.RefreshOnStartup.Value)
