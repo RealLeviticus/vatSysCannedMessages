@@ -42,6 +42,19 @@
               "allowFreeText": true
             }
           ]
+        },
+        {
+          "id": "std-test",
+          "title": "Test",
+          "text": "Hi, Jamie, its {name} test test test",
+          "fields": [
+            {
+              "key": "name",
+              "label": "Your name",
+              "source": "names",
+              "allowFreeText": true
+            }
+          ]
         }
       ]
     }
